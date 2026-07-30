@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>>
         println!("{}", unparsed_tasks);
 
         parse_string_to_tasks(&unparsed_tasks);
-        println!("{}", unparsed_tasks);
+
         return Ok(());
 }
 
