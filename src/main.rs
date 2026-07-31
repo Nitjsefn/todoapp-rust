@@ -26,7 +26,8 @@ fn main() -> Result<(), Box<dyn Error>>
         tasks_file.read_to_string(&mut unparsed_tasks)?;
         println!("{}", unparsed_tasks);
 
-        parse_string_to_tasks(&unparsed_tasks);
+        let mut tasks = parse_string_to_tasks(&unparsed_tasks)?;
+        tasks[0].text = String::new();
 
         return Ok(());
 }
@@ -38,9 +39,9 @@ struct Task
     text: String,
 }
 
-fn parse_string_to_tasks(s: &String) -> Result<LinkedList<Task>, Box<dyn Error>>
+fn parse_string_to_tasks(s: &String) -> Result<Vec<Task>, Box<dyn Error>>
 {
-    let mut tasks: LinkedList<Task> = LinkedList::new();
+    let mut tasks: Vec<Task> = Vec::new();
     let mut split = s.split('\n');
     let mut current_line_opt = split.next();
     while(current_line_opt != None)
@@ -61,7 +62,7 @@ fn parse_string_to_tasks(s: &String) -> Result<LinkedList<Task>, Box<dyn Error>>
             expiration_date: expiration_dt.naive_utc(),
             text: text
         };
-        tasks.push_back(task);
+        tasks.push(task);
         current_line_opt = split.next();
     }
     return Ok(tasks);
