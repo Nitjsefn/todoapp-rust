@@ -6,30 +6,10 @@ use std::io::Read;
 use std::path::Path;
 use chrono::{DateTime, NaiveDateTime, Local};
 
-fn main() -> Result<(), Box<dyn Error>>
+fn main()
 {
     println!("Hello, world!");
 
-    let tasks_path = Path::new("tasks.txt");
-
-    let mut tasks_file = match File::options()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(tasks_path)
-        {
-            Err(err) => panic!("{}", err),
-            Ok(file) => file
-        };
-
-        let mut unparsed_tasks = String::new();
-        tasks_file.read_to_string(&mut unparsed_tasks)?;
-        println!("{}", unparsed_tasks);
-
-        let mut tasks = parse_string_to_tasks(&unparsed_tasks)?;
-        tasks[0].text = String::new();
-
-        return Ok(());
 }
 
 struct Task
@@ -65,5 +45,27 @@ fn parse_string_to_tasks(s: &String) -> Result<Vec<Task>, Box<dyn Error>>
         tasks.push(task);
         current_line_opt = split.next();
     }
+    return Ok(tasks);
+}
+
+fn read_current_tasks() -> Result<Vec<Task>, Box<dyn Error>>
+{
+    let tasks_path = Path::new("tasks.txt");
+
+    let mut tasks_file = match File::options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(tasks_path)
+        {
+            Err(err) => panic!("{}", err),
+            Ok(file) => file
+        };
+
+    let mut unparsed_tasks = String::new();
+    tasks_file.read_to_string(&mut unparsed_tasks)?;
+    println!("{}", unparsed_tasks);
+    let mut tasks = parse_string_to_tasks(&unparsed_tasks)?;
+
     return Ok(tasks);
 }
