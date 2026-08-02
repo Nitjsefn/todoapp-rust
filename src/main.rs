@@ -1,15 +1,24 @@
-use std::slice;
+use std::slice::{self, EscapeAscii};
 use std::str::Split;
+use std::thread::sleep;
+use std::time::Duration;
 use std::{collections::LinkedList, error::Error};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use chrono::{DateTime, NaiveDateTime, Local};
 
+mod escape_ansi;
+
 fn main()
 {
+    print!("{}", escape_ansi::SMCUP);
+    print!("{}", escape_ansi::rgb_foreground(255, 123, 255));
     println!("Hello, world!");
-
+    let dur = Duration::new(2, 0);
+    sleep(dur);
+    print!("{}", escape_ansi::RSTCLR);
+    print!("{}", escape_ansi::RMCUP);
 }
 
 struct Task
