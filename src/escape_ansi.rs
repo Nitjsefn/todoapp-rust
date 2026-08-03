@@ -9,12 +9,17 @@ pub const RSTCLR: &str = "\x1b[0m";
 pub const SAVCUR: &str = "\x1b7";
 pub const RESTORCUR: &str = "\x1b8";
 pub const GETCURPOS: &str = "\x1b[6n";
-pub const MOVCURHOME: &str = "\x1b[H";
+pub const CURHOME: &str = "\x1b[H";
 pub const BOLD: &str = "\x1b[1m";
 pub const DIM: &str = "\x1b[2m";
 pub const ITALIC: &str = "\x1b[3m";
 pub const UNDERLINE: &str = "\x1b[4m";
 pub const STRIKETHROUGH: &str = "\x1b[9m";
+pub const CLEAR: &str = "\x1b[2J";
+pub const CURUP: &str = "\x1b[1A";
+pub const CURDOWN: &str = "\x1b[1B";
+pub const CURRIGHT: &str = "\x1b[1C";
+pub const CURLEFT: &str = "\x1b[1D";
 
 pub fn rgb_foreground(r: u8, g: u8, b: u8) -> String
 {

@@ -4,21 +4,48 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{collections::LinkedList, error::Error};
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write, stdout};
 use std::path::Path;
 use chrono::{DateTime, NaiveDateTime, Local};
+use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 
 mod escape_ansi;
 
-fn main()
+fn main() -> Result<(), Box<dyn Error>>
 {
-    print!("{}", escape_ansi::SMCUP);
+    let mut stdin = std::io::stdin();
+    let mut stdout = std::io::stdout();
+
+    println!("{}", escape_ansi::SMCUP);
+    writeln!(stdout, "{}", escape_ansi::CURHOME);
+    enable_raw_mode();
     print!("{}", escape_ansi::rgb_foreground(255, 123, 255));
-    println!("Hello, world!");
-    let dur = Duration::new(2, 0);
-    sleep(dur);
+    let mut input: [u8; 1] = [0; 1];
+    loop
+    {
+        stdin.read(&mut input);
+        if(input[0] == b'q')
+        {
+            break;
+        }
+        match input[0]
+        {
+            b'h' => {write!(stdout, "{}", escape_ansi::CURLEFT); ()},
+            b'j' => {write!(stdout, "{}", escape_ansi::CURDOWN); ()},
+            b'k' => {write!(stdout, "{}", escape_ansi::CURUP); ()},
+            b'l' => {write!(stdout, "{}", escape_ansi::CURRIGHT); ()},
+            _ => {write!(stdout, "{}", escape_ansi::cursor_pos(2,2)); ()}
+        }
+
+        stdout.flush();
+    }
+    //println!("{}", str::from_utf8(&mut input)?);
+    //let dur = Duration::new(2, 0);
+    //sleep(dur);
+    disable_raw_mode();
     print!("{}", escape_ansi::RSTCLR);
     print!("{}", escape_ansi::RMCUP);
+    return Ok(());
 }
 
 struct Task
