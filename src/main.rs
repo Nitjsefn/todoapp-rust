@@ -7,7 +7,7 @@ use std::{collections::LinkedList, error::Error};
 use std::fs::File;
 use std::io::{Read, Write, stdout};
 use std::path::Path;
-use chrono::{DateTime, NaiveDateTime, Local};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use crossterm::event::read;
 use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 
@@ -18,8 +18,10 @@ mod rect;
 use input_mode::InputMode;
 use rect::Rect;
 
-const timePattern: &str = "";
+const timePattern: &str = "%Y-%m-%d %H:%M";
 const editDelimeter: char = ';';
+const file_name: &str = "tasks.txt";
+
 
 fn main() -> Result<(), Box<dyn Error>>
 {
@@ -45,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>>
     {
         match inputMode
         {
-            InputMode::NORMAL => display_tasks(&tasks, &stdout),
+            InputMode::NORMAL => display_tasks(&tasks, selectedTask, &stdout),
             InputMode::INSERT => display_edit(&new_task_text, &stdout)
         }
         stdout.flush();
@@ -84,6 +86,9 @@ fn main() -> Result<(), Box<dyn Error>>
     disable_raw_mode();
     print!("{}", escape_ansi::RSTCLR);
     print!("{}", escape_ansi::RMCUP);
+
+    save_current_tasks(&tasks);
+
     return Ok(());
 }
 
@@ -156,11 +161,24 @@ fn handle_input_escape(input: &[u8])
     println!("");
 }
 
-fn display_tasks(tasks: &Vec<Task>, mut stdout: &std::io::Stdout)
+fn display_tasks(tasks: &Vec<Task>, selected_idx: usize, mut stdout: &std::io::Stdout)
 {
-    for task in tasks
+    write!(stdout, "{}{}", escape_ansi::CLEAR, escape_ansi::CURHOME);
+    for (i, task) in tasks.iter().enumerate()
     {
-        write!(stdout, "[ ] {}\n", task.text);
+        let dt_now = Local::now();
+        let offset = dt_now.offset().to_owned();
+        let expiration_dt = DateTime::<Local>::from_naive_utc_and_offset(task.expiration_date, offset);
+        let expiration_str = format!("{}", expiration_dt.format(timePattern));
+        if(i == selected_idx)
+        {
+            write!(stdout, "{}{}", escape_ansi::rgb_background(255, 255, 255), escape_ansi::rgb_foreground(0, 0, 0));
+        }
+        write!(stdout, "[ ] {} | {}\n", task.text, expiration_str);
+        if(i == selected_idx)
+        {
+            write!(stdout, "{}", escape_ansi::RSTCLR);
+        }
     }
 }
 
@@ -195,4 +213,37 @@ fn extract_date_from_text(text: &String) -> (String, NaiveDateTime)
         Ok(dt) => dt
     };
     return (strings.0, dateTime);
+}
+
+fn save_current_tasks(tasks: &Vec<Task>)
+{
+    let mut file = match File::create(file_name)
+    {
+        Err(err) => panic!("Cannot create file to save tasks"),
+        Ok(file) => file
+    };
+
+    let csv = tasks_to_string(tasks);
+    file.write(csv.as_bytes());
+}
+
+fn tasks_to_string(tasks: &Vec<Task>) -> String
+{
+    let mut s = String::new();
+    for task in tasks
+    {
+        if(task.finished == true)
+        {
+            continue;
+        }
+
+        s += &format!
+        (
+            "{};{};{}\n",
+            task.creation_date.and_utc().timestamp_millis(),
+            task.expiration_date.and_utc().timestamp_millis(),
+            task.text
+        );
+    }
+    return s;
 }
