@@ -21,6 +21,8 @@ use rect::Rect;
 const timePattern: &str = "%Y-%m-%d %H:%M";
 const editDelimeter: char = ';';
 const file_name: &str = "tasks.txt";
+const task_marker_checked: &str = "x";
+const task_marker_unchecked: &str = " ";
 
 
 fn main() -> Result<(), Box<dyn Error>>
@@ -33,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>>
 
     let mut tasks = match read_current_tasks()
     {
-        Err(err) => panic!("Cannot read current tasks"),
+        Err(err) => panic!("Cannot read current tasks.: {}", err),
         Ok(tasks) => tasks
     };
 
@@ -52,6 +54,7 @@ fn main() -> Result<(), Box<dyn Error>>
         }
         stdout.flush();
 
+        //input = [0; 4];
         stdin.read(&mut input);
         
         if(inputMode == InputMode::NORMAL)
@@ -75,7 +78,7 @@ fn main() -> Result<(), Box<dyn Error>>
             match input[0]
             {
                 8 => {new_task_text.remove(new_task_text.len() - 1); ()}, // Backspace
-                b'\r' => {inputMode = InputMode::NORMAL; create_new_task(&tasks, &new_task_text); new_task_text.clear()},
+                b'\r' => {inputMode = InputMode::NORMAL; tasks.push(create_new_task(&new_task_text)); new_task_text.clear()},
                 _ => {new_task_text += str::from_utf8(&input).unwrap()}
             }
         }
@@ -86,6 +89,8 @@ fn main() -> Result<(), Box<dyn Error>>
     disable_raw_mode();
     print!("{}", escape_ansi::RSTCLR);
     print!("{}", escape_ansi::RMCUP);
+    print!("{}", escape_ansi::CNORM);
+    stdout.flush();
 
     save_current_tasks(&tasks);
 
@@ -108,6 +113,10 @@ fn parse_string_to_tasks(s: &String) -> Result<Vec<Task>, Box<dyn Error>>
     while(current_line_opt != None)
     {
         let current_line = current_line_opt.unwrap();
+        if(current_line.len() == 0)
+        {
+            break;
+        }
         let splitted: Vec<&str> = current_line.split(";").collect();
         let parse_err = "Cannot convert miliSec to NaiveDateTime";
         let current_dt = DateTime::from_timestamp_millis(splitted[0].parse()?).ok_or(parse_err)?;
@@ -146,8 +155,15 @@ fn read_current_tasks() -> Result<Vec<Task>, Box<dyn Error>>
 
     let mut unparsed_tasks = String::new();
     tasks_file.read_to_string(&mut unparsed_tasks)?;
-    println!("{}", unparsed_tasks);
-    let mut tasks = parse_string_to_tasks(&unparsed_tasks)?;
+    let mut tasks: Vec<Task>;
+    if(unparsed_tasks.len() > 0)
+    {
+        tasks = parse_string_to_tasks(&unparsed_tasks)?;
+    }
+    else
+    {
+        tasks = Vec::new();
+    }
 
     return Ok(tasks);
 }
@@ -163,7 +179,7 @@ fn handle_input_escape(input: &[u8])
 
 fn display_tasks(tasks: &Vec<Task>, selected_idx: usize, mut stdout: &std::io::Stdout)
 {
-    write!(stdout, "{}{}", escape_ansi::CLEAR, escape_ansi::CURHOME);
+    write!(stdout, "{}{}{}", escape_ansi::CLEAR, escape_ansi::CURHOME, escape_ansi::CIVIS);
     for (i, task) in tasks.iter().enumerate()
     {
         let dt_now = Local::now();
@@ -174,7 +190,13 @@ fn display_tasks(tasks: &Vec<Task>, selected_idx: usize, mut stdout: &std::io::S
         {
             write!(stdout, "{}{}", escape_ansi::rgb_background(255, 255, 255), escape_ansi::rgb_foreground(0, 0, 0));
         }
-        write!(stdout, "[ ] {} | {}\n", task.text, expiration_str);
+        let mut task_marking: &str = task_marker_unchecked;
+        if(task.finished == true)
+        {
+            task_marking = task_marker_checked;
+        }
+        
+        write!(stdout, "[{}] {} | {}\n", task_marking, task.text, expiration_str);
         if(i == selected_idx)
         {
             write!(stdout, "{}", escape_ansi::RSTCLR);
@@ -184,10 +206,10 @@ fn display_tasks(tasks: &Vec<Task>, selected_idx: usize, mut stdout: &std::io::S
 
 fn display_edit(text: &String, mut stdout: &std::io::Stdout)
 {
-    write!(stdout, "{}{}", escape_ansi::CURHOME, text);
+    write!(stdout, "{}{}{}{}", escape_ansi::CLEAR, escape_ansi::CURHOME, escape_ansi::CNORM, text);
 }
 
-fn create_new_task(mut tasks: &Vec<Task>, text: &String) -> Task
+fn create_new_task(text: &String) -> Task
 {
     let (content, exp_date) = extract_date_from_text(&text);
     let task = Task
@@ -210,7 +232,7 @@ fn extract_date_from_text(text: &String) -> (String, NaiveDateTime)
     let dateTime = match NaiveDateTime::parse_from_str(strings.1, timePattern)
     {
         Err(_) => {strings.0 += strings.1; DateTime::from_timestamp_millis(Local::now().naive_utc().and_utc().timestamp_millis() + (24*60*60*1000)).unwrap().naive_utc()},
-        Ok(dt) => dt
+        Ok(dt) => Local.from_local_datetime(&dt).unwrap().naive_utc()
     };
     return (strings.0, dateTime);
 }
